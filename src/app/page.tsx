@@ -1,4 +1,5 @@
 import PropertyExplorer from "@/components/PropertyExplorer";
+import ServicesExplorer from "@/components/ServicesExplorer";
 import { properties } from "@/data/properties";
 import SponsorBanner from "@/components/SponsorBanner";
 import type { Sponsor } from "@/types";
@@ -64,6 +65,8 @@ export default function Home() {
         <div className="mt-12 max-w-2xl">
           <SponsorBanner sponsor={sponsor} />
         </div>
+
+        <ServicesExplorer />
 
         <section aria-labelledby="listings-heading" className="mt-16">
           <h2 id="listings-heading" className="text-3xl font-semibold tracking-tight">

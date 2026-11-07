@@ -97,3 +97,117 @@ Eric's reviewer evidence, not Vanessa's AI-use record or a submitted approval.
 | Tool | Prompt | Output used | Output rejected | Verification | Commit |
 |---|---|---|---|---|---|
 | Codex (review evidence documentation) | Eric asked to add the supplied Lighthouse tests to the repository, confirmed sponsor/layout/filter tests passed, and confirmed the application worked in a browser without Zotero. | Preserved both supplied Lighthouse JSON reports unchanged, recorded scores and findings in testing-lab2.md, attributed browser tests to Eric, and marked Zotero resolved rather than an outstanding retest. | No output rejected. Did not convert Lighthouse scores into full accessibility compliance, infer detailed unreported keyboard/viewport results, or invent Vanessa's AI critiques. | Parsed both reports and verified copied bytes; Accessibility 100 in both, 25 automated accessibility passes each, no automated accessibility failures. Review checkout: fbce716. Specific unconfirmed manual details remain identified separately. | Pending documentation commit; implementation reviewed at `fbce716` |
+
+## CIS 3610 Midterm Version B — Parts 1 and 2, 2026-11-06
+
+**Task:** Repository preparation and requirements documentation.
+
+**AI tool:** Copilot SDK in VS Code.
+
+**Prompt summary:** Update `.gitignore` to exclude dependencies, environment
+files, build output, and Next.js output; check tracked content for common
+credential patterns; review but do not modify this AI log; and create
+`docs/requirements.md` with three sized user stories, Given/When/Then criteria,
+and database/API traceability. Do not commit or push.
+
+**AI assistance / output:** Reviewed the existing project structure and drafted
+requirements for browsing approved services, provider service management, and
+client bookings with authorized booking visibility. The requirements identify
+the migration path and services API route required by the assignment.
+
+**Changes accepted:**
+
+- Changed `.gitignore` so `node_modules/` and `.next/` are ignored at any
+  directory depth, added `dist/`, and preserved existing ignore rules,
+  including `.env*`.
+- Created `docs/requirements.md` with three user stories, acceptance criteria,
+  size estimates, and migration/API traceability.
+
+**Changes not implemented:** No service update or booking API route was
+invented. The assignment specifies the services API `GET` and `POST` handler,
+but does not specify a service-update handler or a booking API handler. The
+requirements document identifies these as undefined API details rather than
+claiming they exist. The documented behavior is a requirement, not evidence
+that these features have been implemented.
+
+**Human review:** I checked the story wording and size estimates against the
+instructor's rubric and confirmed they align with its requirements. Clarify the
+API surface for service updates and booking operations if required by later
+implementation work.
+
+**Verification:** Confirmed the branch was `exam/services-booking-eval`.
+`git check-ignore` checks passed for root and nested `node_modules/`, `.next/`,
+and `dist/`, and for `.env` and `.env.development.local`. Tracked file names
+and contents were scanned for common credential patterns; no matches were
+found. No local `.env` filenames were found. The requirements document was
+checked for three stories, Given/When/Then criteria, size estimates, migration
+and services-route references, and the unspecified update/booking handlers.
+`git diff --check` passed. No secret values were displayed.
+
+**Limitations:** Lint, TypeScript, and production build checks were not run
+because these changes concern Git ignore rules and documentation.
+
+**Commit status:** No commit or push was made for Parts 1 and 2. At the time
+of this entry, the latest commit was `9106999` (`Add midterm exam progress`);
+the `.gitignore` and `docs/requirements.md` changes were uncommitted.
+
+## CIS 3610 Midterm Version B — Part 3, 2026-11-06
+
+**Task:** Create the Supabase database migration for the Neighborhood Listing
+Platform.
+
+**AI assistance:** AI assistance reviewed the project structure and produced a
+Supabase SQL migration containing five related tables: `profiles`,
+`service_categories`, `services`, `service_category_mappings`, and `bookings`.
+The migration includes primary and foreign keys, constraints, indexes,
+time-zone-aware timestamp columns, and `updated_at` triggers.
+
+**Changes accepted:** Created
+`supabase/migrations/20261029140000_exam_services_persistence.sql`.
+
+**Changes not implemented:** Row-Level Security policies were not included
+because they are reserved for Part 4. No API functionality was implemented.
+
+**Human review:** I reviewed the assignment requirements and database structure before allowing Copilot to continue with the implementation. I checked that the proposed tables, relationships, and fields aligned with the requirements. I used Copilot to assist with the implementation, but reviewed its proposed work before moving forward.
+
+**Verification:** Static checks confirmed that the migration declares all five
+required tables and expected relationships, timestamp defaults, and update
+triggers. A trailing-whitespace check passed. A scan found no common credential
+patterns in the migration.
+
+**Limitations:** The migration was not executed against PostgreSQL or a live
+Supabase database. `psql` and the Supabase CLI were unavailable, so successful
+database execution has not been confirmed.
+
+**Commit status:** No commit or push was performed for Part 3.
+
+
+## CIS 3610 Midterm Version B — Part 4, 2026-11-06
+
+**Task:** Implement and review Row-Level Security (RLS) policies for the Local Services & Bookings subsystem.
+
+**AI tool:** Copilot SDK in VS Code.
+
+**AI assistance:** Copilot reviewed the existing database migrations and security policies, investigated a service-category mapping access issue, and created an additional migration for provider access to their own draft or suspended service mappings.
+
+**Changes accepted:**
+- Created the RLS migration.
+- Added a forward migration for provider mapping reads.
+- Expanded the RLS test script to include 22 security scenarios.
+- Added the `test:rls` command to `package.json`.
+- Updated `docs/security-audit.md`.
+
+**Human review:** I reviewed Copilot's findings and examined the proposed security changes before deciding how to proceed. I also reviewed the reported test results and identified which scenarios still needed testing.
+
+**Verification:**
+- Lint passed.
+- TypeScript check passed.
+- Production build passed.
+- JavaScript syntax check passed.
+- Seven security scenarios passed.
+- Fifteen security scenarios were blocked.
+- Zero failures were reported.
+
+**Limitations:** The new migration has not been applied to the live database. The remaining security scenarios have not been completed. No database write tests were executed during the reported test run.
+
+**Commit status:** No commit or push was made for Part 4 at the time of this entry.

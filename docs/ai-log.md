@@ -251,6 +251,14 @@ rubric. Disposable-database verification and review of remote prerequisites
 remain necessary before production execution. No credentials or environment-file
 contents were accessed or displayed.
 
+## Server-only environment names, 2026-11-07
+
+**Exact request:** "okay that is what i was saying it doesn't like the naming convention can we just save it as a different name so it works and doesn't flag it"
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Environment configuration / Codex | Use non-public-prefixed deployment names without breaking the existing local setup. | Server helpers and audit scripts prefer SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY; existing NEXT_PUBLIC aliases remain fallbacks. SUPABASE_SERVICE_ROLE_KEY remains strictly server-only. Added server-only protection to the session helper and documented Vercel Secret settings. | Did not rename a private key to a public-prefixed name, copy credentials into source, edit environment files, or change live settings. No secrets from the conversation are stored here. | Mocked tests verify new-name precedence and legacy compatibility for both clients and the read-only runner. 59 local tests, lint and TypeScript checks passed. Live credential values were not inspected. | Pending — no commit created in this session. |
+
 ## CIS 3610 Midterm Version B — production read-only RLS audit, 2026-11-07
 
 **Exact request:** "can you help me with number three, i have the .env with the account details"

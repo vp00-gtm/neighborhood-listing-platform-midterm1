@@ -115,6 +115,12 @@ test("read-only audit verifies provider/client privacy without admin credentials
   const adminReport = await runReadOnlyAudit(environment, fakeNetwork);
   assert.ok(adminReport.results.every((result) => result.status === "PASS"));
   assert.equal(adminReport.controlSources.bookings, "admin");
+  environment.SUPABASE_URL = origin;
+  environment.SUPABASE_PUBLISHABLE_KEY = key;
+  environment.NEXT_PUBLIC_SUPABASE_URL = "https://ignored-legacy.invalid";
+  environment.NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_secret_ignored-legacy-test-input";
+  const renamedReport = await runReadOnlyAudit(environment, fakeNetwork);
+  assert.ok(renamedReport.results.every((result) => result.status === "PASS"));
   roles.unrelated = "client";
   const wrongRoleReport = await runReadOnlyAudit(environment, fakeNetwork);
   assert.ok(wrongRoleReport.results.some((result) => result.name === "admin: authentication and profile role" && result.status === "FAIL"));

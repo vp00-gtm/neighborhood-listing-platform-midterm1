@@ -58,11 +58,11 @@ export async function runReadOnlyAudit(environment, fetchImplementation = fetch)
         detail: error instanceof Error ? error.message : "Unexpected audit failure." });
     }
   }
-  const url = environment.NEXT_PUBLIC_SUPABASE_URL;
-  const key = environment.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = environment.SUPABASE_URL ?? environment.NEXT_PUBLIC_SUPABASE_URL;
+  const key = environment.SUPABASE_PUBLISHABLE_KEY ?? environment.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) {
     return { mode: "read-only", results: [{ name: "Public configuration", status: "BLOCKED",
-      detail: "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required." }] };
+      detail: "SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are required (legacy NEXT_PUBLIC aliases are also accepted)." }] };
   }
   let origin;
   try { origin = new URL(url).origin; }

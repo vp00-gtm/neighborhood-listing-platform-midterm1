@@ -1,0 +1,166 @@
+{
+  "mode": "isolated PostgreSQL",
+  "productionTouched": false,
+  "results": [
+    {
+      "name": "Migration executes: 20261029140000_exam_services_persistence.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "Migration executes: 20261106234100_baseline_schema.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "Migration executes: 20261106234200_baseline_security.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "Migration executes: 20261107000000_exam_schema_alignment.sql",
+      "status": "PASS"
+    },
+    {
+      "name": "Legacy IDs, prices, currencies, notes, references and timestamps preserved",
+      "status": "PASS"
+    },
+    {
+      "name": "Public approved services readable",
+      "status": "PASS"
+    },
+    {
+      "name": "Public draft services hidden",
+      "status": "PASS"
+    },
+    {
+      "name": "Public inactive category control hidden",
+      "status": "PASS"
+    },
+    {
+      "name": "Public active category readable",
+      "status": "PASS"
+    },
+    {
+      "name": "Public mappings restricted to approved services",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider A sees only owned services",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider A reads own approved mappings",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider creates owned draft using allowed insert columns",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider cannot forge another owner",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider updates own draft",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider edits own suspended service",
+      "status": "PASS"
+    },
+    {
+      "name": "Cross-provider update denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Cross-provider delete denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider approved-service edit denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider approved-service deletion denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider can delete owned eligible service",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider submits own draft to pending",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider cannot approve own service",
+      "status": "PASS"
+    },
+    {
+      "name": "Client cannot approve a service",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin approves pending service",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin suspends approved service",
+      "status": "PASS"
+    },
+    {
+      "name": "Client cannot self-assign admin role",
+      "status": "PASS"
+    },
+    {
+      "name": "anon inserts a valid booking without SELECT rights",
+      "status": "PASS"
+    },
+    {
+      "name": "clientA inserts a valid booking without SELECT rights",
+      "status": "PASS"
+    },
+    {
+      "name": "Booking for non-approved service denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Anonymous booking reads denied",
+      "status": "PASS"
+    },
+    {
+      "name": "Client booking reads hidden",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider sees only associated bookings",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin reads all fixture bookings",
+      "status": "PASS"
+    },
+    {
+      "name": "Provider deletion restricted while services reference it",
+      "status": "PASS"
+    },
+    {
+      "name": "Category deletion cascades mappings but preserves services/bookings",
+      "status": "PASS"
+    },
+    {
+      "name": "Service deletion cascades bookings and mappings",
+      "status": "PASS"
+    },
+    {
+      "name": "Admin elevated read/write across five application tables",
+      "status": "PASS"
+    },
+    {
+      "name": "Every rolled-back test leaves legacy fixtures unchanged",
+      "status": "PASS"
+    },
+    {
+      "name": "Disposable container removed",
+      "status": "PASS"
+    }
+  ]
+}

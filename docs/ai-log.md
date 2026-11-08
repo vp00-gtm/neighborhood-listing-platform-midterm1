@@ -97,3 +97,175 @@ Eric's reviewer evidence, not Vanessa's AI-use record or a submitted approval.
 | Tool | Prompt | Output used | Output rejected | Verification | Commit |
 |---|---|---|---|---|---|
 | Codex (review evidence documentation) | Eric asked to add the supplied Lighthouse tests to the repository, confirmed sponsor/layout/filter tests passed, and confirmed the application worked in a browser without Zotero. | Preserved both supplied Lighthouse JSON reports unchanged, recorded scores and findings in testing-lab2.md, attributed browser tests to Eric, and marked Zotero resolved rather than an outstanding retest. | No output rejected. Did not convert Lighthouse scores into full accessibility compliance, infer detailed unreported keyboard/viewport results, or invent Vanessa's AI critiques. | Parsed both reports and verified copied bytes; Accessibility 100 in both, 25 automated accessibility passes each, no automated accessibility failures. Review checkout: fbce716. Specific unconfirmed manual details remain identified separately. | Pending documentation commit; implementation reviewed at `fbce716` |
+
+## CIS 3610 Midterm Version B — Parts 1 and 2, 2026-11-06
+
+**Task:** Repository preparation and requirements documentation.
+
+**AI tool:** Copilot SDK in VS Code.
+
+**Prompt summary:** Update `.gitignore` to exclude dependencies, environment
+files, build output, and Next.js output; check tracked content for common
+credential patterns; review but do not modify this AI log; and create
+`docs/requirements.md` with three sized user stories, Given/When/Then criteria,
+and database/API traceability. Do not commit or push.
+
+**AI assistance / output:** Reviewed the existing project structure and drafted
+requirements for browsing approved services, provider service management, and
+client bookings with authorized booking visibility. The requirements identify
+the migration path and services API route required by the assignment.
+
+**Changes accepted:**
+
+- Changed `.gitignore` so `node_modules/` and `.next/` are ignored at any
+  directory depth, added `dist/`, and preserved existing ignore rules,
+  including `.env*`.
+- Created `docs/requirements.md` with three user stories, acceptance criteria,
+  size estimates, and migration/API traceability.
+
+**Changes not implemented:** No service update or booking API route was
+invented. The assignment specifies the services API `GET` and `POST` handler,
+but does not specify a service-update handler or a booking API handler. The
+requirements document identifies these as undefined API details rather than
+claiming they exist. The documented behavior is a requirement, not evidence
+that these features have been implemented.
+
+**Human review:** I checked the story wording and size estimates against the
+instructor's rubric and confirmed they align with its requirements. Clarify the
+API surface for service updates and booking operations if required by later
+implementation work.
+
+**Verification:** Confirmed the branch was `exam/services-booking-eval`.
+`git check-ignore` checks passed for root and nested `node_modules/`, `.next/`,
+and `dist/`, and for `.env` and `.env.development.local`. Tracked file names
+and contents were scanned for common credential patterns; no matches were
+found. No local `.env` filenames were found. The requirements document was
+checked for three stories, Given/When/Then criteria, size estimates, migration
+and services-route references, and the unspecified update/booking handlers.
+`git diff --check` passed. No secret values were displayed.
+
+**Limitations:** Lint, TypeScript, and production build checks were not run
+because these changes concern Git ignore rules and documentation.
+
+**Commit status:** No commit or push was made for Parts 1 and 2. At the time
+of this entry, the latest commit was `9106999` (`Add midterm exam progress`);
+the `.gitignore` and `docs/requirements.md` changes were uncommitted.
+
+## CIS 3610 Midterm Version B — Part 3, 2026-11-06
+
+**Task:** Create the Supabase database migration for the Neighborhood Listing
+Platform.
+
+**AI assistance:** AI assistance reviewed the project structure and produced a
+Supabase SQL migration containing five related tables: `profiles`,
+`service_categories`, `services`, `service_category_mappings`, and `bookings`.
+The migration includes primary and foreign keys, constraints, indexes,
+time-zone-aware timestamp columns, and `updated_at` triggers.
+
+**Changes accepted:** Created
+`supabase/migrations/20261029140000_exam_services_persistence.sql`.
+
+**Changes not implemented:** Row-Level Security policies were not included
+because they are reserved for Part 4. No API functionality was implemented.
+
+**Human review:** I reviewed the assignment requirements and database structure before allowing Copilot to continue with the implementation. I checked that the proposed tables, relationships, and fields aligned with the requirements. I used Copilot to assist with the implementation, but reviewed its proposed work before moving forward.
+
+**Verification:** Static checks confirmed that the migration declares all five
+required tables and expected relationships, timestamp defaults, and update
+triggers. A trailing-whitespace check passed. A scan found no common credential
+patterns in the migration.
+
+**Limitations:** The migration was not executed against PostgreSQL or a live
+Supabase database. `psql` and the Supabase CLI were unavailable, so successful
+database execution has not been confirmed.
+
+**Commit status:** No commit or push was performed for Part 3.
+
+
+## CIS 3610 Midterm Version B — Part 4, 2026-11-06
+
+**Task:** Implement and review Row-Level Security (RLS) policies for the Local Services & Bookings subsystem.
+
+**AI tool:** Copilot SDK in VS Code.
+
+**AI assistance:** Copilot reviewed the existing database migrations and security policies, investigated a service-category mapping access issue, and created an additional migration for provider access to their own draft or suspended service mappings.
+
+**Changes accepted:**
+- Created the RLS migration.
+- Added a forward migration for provider mapping reads.
+- Expanded the RLS test script to include 22 security scenarios.
+- Added the `test:rls` command to `package.json`.
+- Updated `docs/security-audit.md`.
+
+**Human review:** I reviewed Copilot's findings and examined the proposed security changes before deciding how to proceed. I also reviewed the reported test results and identified which scenarios still needed testing.
+
+**Verification:**
+- Lint passed.
+- TypeScript check passed.
+- Production build passed.
+- JavaScript syntax check passed.
+- Seven security scenarios passed.
+- Fifteen security scenarios were blocked.
+- Zero failures were reported.
+
+**Limitations:** The new migration has not been applied to the live database. The remaining security scenarios have not been completed. No database write tests were executed during the reported test run.
+
+**Commit status:** No commit or push was made for Part 4 at the time of this entry.
+
+## CIS 3610 Midterm Version B — Parts 5 and 6 rubric alignment, 2026-11-07
+
+This entry records the current correction session. Earlier entries remain
+historical records and are not evidence that the current database was tested.
+
+**Exact request:** "i already gave the professor acess to the repository, can you help me complete steps 5 and 6"
+
+**Scope clarification:** The student selected "Exam Parts 5 and 6: API and accessible UI".
+Instructor repository access is confirmed by the student, not independently verified here.
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Part 5 / Codex | Align the services API with the supplied Version B rubric, using the existing authenticated provider session. | POST uses the cookie-authenticated client for service/category creation and cleanup, verifies the provider role, derives ownership server-side, and keeps strict validation and structured errors. It relies on the migration's draft default because providers have no INSERT grant on status. GET retains its server-only, approved-service public projection. | Rejected the previous service-role write path: it bypassed provider RLS. Removed explicit status insertion because the column-level grant does not permit it. | Mocked API tests verify the session client, ownership, allowed insert columns, rejection paths, persisted response and no service-role construction in POST. No live API writes or RLS tests were performed. | Pending — no commit created in this session. |
+| Part 6 / Codex | Match the required semantic card, 1/2/3-column breakpoints, named booking button and keyboard focus behavior. | Added article header and specifications ul; configured grid-cols-1 md:grid-cols-2 lg:grid-cols-3; added a native booking disclosure button with an accessible name, aria-expanded and aria-controls; added focus rings on service controls. Date-input focus-within styling covers native internal segments. | Replaced the earlier specifications dl and summary entry control to match the exact rubric. Replaced the sm tablet breakpoint with md. Browser testing exposed a missing ring on one date segment; this was corrected and retested. | React rendering tests and mocked explorer tests; headless Edge with intercepted synthetic API responses verified layouts at 320/640/768/1280px, no horizontal overflow, Tab/Shift+Tab/Enter/Space, disclosure state, and visible rings through all booking fields and the submit button. No forms were submitted. | Pending — no commit created in this session. |
+
+**Local results:** 50 tests passed; lint, TypeScript, production build and
+whitespace checks passed. The build loads environment configuration normally;
+no environment-file contents or credentials were inspected or displayed.
+
+**Evidence limits:** Browser services were synthetic test fixtures, not live
+Supabase records. These checks do not prove live provider-session persistence,
+database RLS behavior, cross-browser accessibility or screen-reader behavior.
+No database connection, SQL, migration, deployment, commit or push was performed.
+
+## CIS 3610 Midterm Version B — forward schema alignment, 2026-11-07
+
+**Exact request:** "we dont need a professors approval, we just want the assignment to work. make the recomended changes."
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Part 3 alignment / Codex | Prepare the recommended schema corrections to match the full rubric while preserving the already-applied migration and records. | Added 20261107000000_exam_schema_alignment.sql, following all three existing migration versions. It changes service-provider deletion to RESTRICT, category-mapping deletion to CASCADE, booking-service deletion to CASCADE, installs the exam slug check, and sets the five exact created_at default expressions. Added an execution/effects note in docs/exam-schema-alignment.md. | Rejected editing or rerunning the applied migration and any data-repair backfills. Unexpected FK metadata or incompatible slugs abort the new transaction instead of guessing or altering records. | 18 offline source-level checks passed. Migration ordering and whitespace were checked. A SHA-256 comparison confirmed the original migration was unchanged. No SQL parser or PostgreSQL execution was used, and no Supabase connection or remote change occurred. | Pending — no commit created in this session. |
+
+**Status:** The new migration is prepared locally and has not been applied.
+It contains no row updates/deletions, but future service deletions will cascade
+to bookings and future category deletions will cascade to mappings, per the
+rubric. Disposable-database verification and review of remote prerequisites
+remain necessary before production execution. No credentials or environment-file
+contents were accessed or displayed.
+
+## CIS 3610 Midterm Version B — production read-only RLS audit, 2026-11-07
+
+**Exact request:** "can you help me with number three, i have the .env with the account details"
+
+**Scope selected by the student:** "Production project — keep checks read-only".
+The student then identified the existing "unrelated" account as the admin.
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Part 4 read audit / Codex | Verify production visibility and role isolation without modifying application records or displaying credentials. | Added scripts/rls-readonly-tests.mjs and test:rls:readonly, with an independent transport allowlist for table GETs and authentication only. Uses existing records without a two-booking assumption. Supports the student-identified UNRELATED credential alias only after verifying its real admin profile role. Updated docs/security-audit.md with actual results and untested write cases. | Did not run the older mutation-capable script or use the service-role key to bypass RLS. Did not assume the unrelated account was admin, invent results, require credential values in chat, or change environment files. | Five local runner safety tests pass. Initial missing admin configuration caused blocked checks; final production run verified all five account roles and passed all 20 read-only checks. Four services, four mappings and three bookings were available as admin controls. No booking emails or notes were requested. | Pending — no commit created in this session. |
+
+**Evidence limits:** Authentication sign-in/sign-out requests can create/end Auth
+sessions and update sign-in metadata. No service, category, mapping, profile or
+booking records were inserted, updated or deleted. No SQL, RPC, migration,
+permission change, commit, push or deployment was performed. Write authorization,
+admin elevated writes and a known-inactive-category negative control remain
+unverified. Environment variables were loaded privately by Node; no credential
+values or file contents were displayed.

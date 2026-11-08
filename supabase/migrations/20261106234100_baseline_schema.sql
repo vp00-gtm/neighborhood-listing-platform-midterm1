@@ -1,0 +1,3 @@
+-- Superseded by 20261029140000_exam_services_persistence.sql.
+-- Kept as a migration-version placeholder so fresh databases do not recreate
+-- tables after the forward-compatible schema reconciliation has run.

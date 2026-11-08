@@ -1,0 +1,3 @@
+-- Superseded by 20261029140000_exam_services_persistence.sql.
+-- Kept as a migration-version placeholder; the required migration installs
+-- the complete grants and role-aware RLS policies before this version runs.

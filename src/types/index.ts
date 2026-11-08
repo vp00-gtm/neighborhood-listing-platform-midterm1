@@ -24,6 +24,37 @@ export interface SponsorBannerProps {
   sponsor: Sponsor;
 }
 
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  slug: string;
+  active_status: boolean;
+}
+
+export interface ServiceCategoryMapping {
+  category: ServiceCategory | null;
+}
+
+export interface Service {
+  id: string;
+  title: string;
+  description: string | null;
+  hourly_rate: number;
+  duration_minutes: number;
+  coverage_radius_miles: number;
+  created_at: string;
+  service_category_mappings: ServiceCategoryMapping[];
+}
+
+export interface Booking {
+  id: string;
+  service_id: string;
+  client_email: string;
+  requested_date: string;
+  notes: string;
+  created_at: string;
+}
+
 /**
  * Controlled draft filters: city === "" means all cities; maxRentUsd ===
  * undefined means no rent limit. Change callbacks update the draft only.

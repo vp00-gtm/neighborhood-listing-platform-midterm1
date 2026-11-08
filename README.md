@@ -38,10 +38,24 @@ The home page source is [`src/app/page.tsx`](./src/app/page.tsx).
 ```bash
 npm run lint
 npm exec tsc -- --noEmit
+npm run test:validation
 npm run build
 ```
 
-The project does not define a separate test script. See [Lab 1 testing notes](./docs/testing-lab1.md) for recorded command results and pending manual checks.
+See [Lab 1 testing notes](./docs/testing-lab1.md) for recorded command results
+and pending manual checks.
+
+## CIS 3610 Version B — Local Services & Bookings
+
+The approved local implementation includes a forward-compatible schema
+migration, role-aware RLS policies, public service browsing, provider service
+submission, and booking requests. See [requirements](./docs/requirements.md)
+and [security status](./docs/security-audit.md).
+
+`npm run test:validation` runs local input-validation tests without connecting
+to Supabase. `npm run test:rls` is an environment-backed integration runner;
+use only dedicated disposable test accounts and a non-production project.
+Neither test command applies migrations.
 
 ## Deployment
 

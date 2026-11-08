@@ -17,7 +17,8 @@ function isCategory(value: unknown): value is ServiceCategory {
   return (
     typeof category.id === "string" &&
     typeof category.name === "string" &&
-    typeof category.slug === "string"
+    typeof category.slug === "string" &&
+    typeof category.active_status === "boolean"
   );
 }
 
@@ -29,11 +30,17 @@ function isService(value: unknown): value is Service {
   const service = value as Record<string, unknown>;
   if (
     typeof service.id !== "string" ||
-    typeof service.name !== "string" ||
-    typeof service.description !== "string" ||
-    typeof service.price_amount !== "number" ||
-    !Number.isFinite(service.price_amount) ||
-    typeof service.currency !== "string" ||
+    typeof service.title !== "string" ||
+    (service.description !== null && typeof service.description !== "string") ||
+    typeof service.hourly_rate !== "number" ||
+    !Number.isFinite(service.hourly_rate) ||
+    service.hourly_rate < 0 ||
+    typeof service.duration_minutes !== "number" ||
+    !Number.isInteger(service.duration_minutes) ||
+    service.duration_minutes < 15 ||
+    typeof service.coverage_radius_miles !== "number" ||
+    !Number.isInteger(service.coverage_radius_miles) ||
+    service.coverage_radius_miles <= 0 ||
     typeof service.created_at !== "string" ||
     !Array.isArray(service.service_category_mappings)
   ) {
@@ -72,6 +79,16 @@ export default function ServicesExplorer() {
 
   useEffect(() => {
     const controller = new AbortController();
+    let active = true;
+    // Bound both the initial fetch and reading its body. Aborting alone is not
+    // enough: update the UI even if an underlying operation never settles.
+    const timeout = setTimeout(() => {
+      controller.abort();
+      if (active) {
+        setError("Services are taking too long to load. Please try again.");
+        setIsLoading(false);
+      }
+    }, 15_000);
 
     async function loadServices() {
       setIsLoading(true);
@@ -87,23 +104,27 @@ export default function ServicesExplorer() {
         }
 
         const payload: unknown = await response.json();
+        if (!active || controller.signal.aborted) {
+          return;
+        }
         if (!isServicesResponse(payload)) {
           throw new Error("The services response was not in the expected format.");
         }
 
         setServices(payload.services);
       } catch (loadError) {
-        if (controller.signal.aborted) {
+        if (!active || controller.signal.aborted) {
           return;
         }
 
         setError(
-          loadError instanceof Error
+          loadError instanceof Error && !(loadError instanceof TypeError || loadError instanceof SyntaxError)
             ? loadError.message
             : "Services could not be loaded. Please try again.",
         );
       } finally {
-        if (!controller.signal.aborted) {
+        clearTimeout(timeout);
+        if (active) {
           setIsLoading(false);
         }
       }
@@ -111,7 +132,11 @@ export default function ServicesExplorer() {
 
     void loadServices();
 
-    return () => controller.abort();
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, [retryCount]);
 
   return (
@@ -123,44 +148,48 @@ export default function ServicesExplorer() {
         Browse services approved for your neighborhood.
       </p>
 
-      {isLoading ? (
-        <p
-          role="status"
-          aria-live="polite"
-          className="mt-6 rounded-xl border border-zinc-200 bg-white p-5 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-        >
-          Loading approved services…
-        </p>
-      ) : error ? (
-        <div
-          role="alert"
-          className="mt-6 rounded-xl border border-red-300 bg-red-50 p-5 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
-        >
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => setRetryCount((count) => count + 1)}
-            className="mt-3 min-h-11 rounded-lg border border-current px-4 py-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-red-700 dark:focus-visible:outline-red-200"
+      <button
+        type="button"
+        aria-controls="services-results"
+        aria-disabled={isLoading}
+        onClick={() => {
+          if (isLoading) return;
+          setIsLoading(true);
+          setError(null);
+          setRetryCount((count) => count + 1);
+        }}
+        className="mt-5 min-h-11 rounded-lg border border-emerald-700 px-4 py-2 font-semibold text-emerald-800 aria-disabled:cursor-wait aria-disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700 dark:border-emerald-400 dark:text-emerald-300 dark:focus-visible:outline-emerald-300"
+      >
+        {isLoading ? "Loading services…" : error ? "Try again" : "Refresh services"}
+      </button>
+      <p
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="mt-4 text-zinc-600 dark:text-zinc-300"
+      >
+        {isLoading ? "Loading approved services…" : error ? "" : services.length === 0
+          ? "No approved services are available right now."
+          : `${services.length} approved ${services.length === 1 ? "service" : "services"} available.`}
+      </p>
+      <div id="services-results" aria-busy={isLoading}>
+        {!isLoading && error ? (
+          <div
+            role="alert"
+            className="mt-6 rounded-xl border border-red-300 bg-red-50 p-5 text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100"
           >
-            Try again
-          </button>
-        </div>
-      ) : services.length === 0 ? (
-        <p
-          role="status"
-          className="mt-6 rounded-xl border border-zinc-200 bg-white p-5 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-        >
-          No approved services are available right now.
-        </p>
-      ) : (
-        <ul className="mt-6 grid min-w-0 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <li key={service.id} className="min-w-0">
-              <ServiceCard service={service} />
-            </li>
-          ))}
-        </ul>
-      )}
+            <p>{error}</p>
+          </div>
+        ) : !isLoading && services.length > 0 && !error ? (
+          <ul aria-label="Approved neighborhood services" className="mt-6 grid min-w-0 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {services.map((service) => (
+              <li key={service.id} className="min-w-0">
+                <ServiceCard service={service} />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
     </section>
   );
 }

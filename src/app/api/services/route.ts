@@ -1,82 +1,70 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { z } from "zod";
-
-const serviceInputSchema = z.strictObject({
-  name: z.string().trim().min(1).max(120),
-  description: z.string().trim().min(1).max(5000),
-  price_amount: z.number().finite().min(0).max(99_999_999.99),
-  currency: z.string().regex(/^[A-Z]{3}$/).default("USD"),
-});
-
-function getSupabaseConfig() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !anonKey) {
-    return null;
-  }
-
-  return { url, anonKey };
-}
-
-async function createRequestSupabaseClient(
-  config: NonNullable<ReturnType<typeof getSupabaseConfig>>,
-) {
-  const cookieStore = await cookies();
-
-  return createServerClient(config.url, config.anonKey, {
-    cookies: {
-      getAll() {
-        return cookieStore.getAll();
-      },
-      setAll(cookiesToSet) {
-        for (const { name, value, options } of cookiesToSet) {
-          cookieStore.set(name, value, options);
-        }
-      },
-    },
-  });
-}
+import { serviceSchema } from "@/schemas/service";
+import type { Service } from "@/types";
+import {
+  createRequestSupabaseClient,
+  createSupabaseServerClient,
+  getSupabaseConfig,
+} from "@/lib/supabaseServer";
 
 export async function GET() {
-  const config = getSupabaseConfig();
-  if (!config) {
-    return Response.json(
-      { error: "Services are temporarily unavailable." },
-      { status: 503 },
-    );
-  }
+  try {
+    // Public reads must not inherit provider-specific session visibility.
+    // This explicit filter/column list is mandatory for the privileged client.
+    const supabase = createSupabaseServerClient();
+    if (!supabase) {
+      return Response.json(
+        { error: "Services are temporarily unavailable." },
+        { status: 503 },
+      );
+    }
 
-  const supabase = await createRequestSupabaseClient(config);
-  const { data, error } = await supabase
-    .from("services")
-    .select(
-      "id, name, description, price_amount, currency, created_at, service_category_mappings(category:service_categories(id, name, slug))",
-    )
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+      .from("services")
+      .select(
+        "id, title, description, hourly_rate, duration_minutes, coverage_radius_miles, created_at, service_category_mappings(category:service_categories(id, name, slug, active_status))",
+      )
+      .eq("status", "approved")
+      .order("created_at", { ascending: false })
+      // The existing FK makes each mapping's category a nullable object.
+      // No generated Supabase Database types are present in this project.
+      .overrideTypes<Service[], { merge: false }>();
 
-  if (error) {
-    console.error("Services GET query failed", error.code);
+    if (error) {
+      console.error("Services GET query failed", error.code);
+      return Response.json(
+        { error: "Unable to retrieve services." },
+        { status: 500 },
+      );
+    }
+
+    // The privileged client does not apply category RLS, so remove inactive
+    // categories explicitly while keeping the frontend's nested response shape.
+    const services = (data ?? []).map((service) => ({
+      ...service,
+      service_category_mappings: service.service_category_mappings.filter(
+        (mapping) => mapping.category?.active_status === true,
+      ),
+    }));
+    return Response.json({ services });
+  } catch {
+    console.error("Services GET failed unexpectedly");
     return Response.json(
       { error: "Unable to retrieve services." },
       { status: 500 },
     );
   }
-
-  return Response.json({ services: data });
 }
 
 export async function POST(request: Request) {
-  const config = getSupabaseConfig();
-  if (!config) {
-    return Response.json(
-      { error: "Services are temporarily unavailable." },
-      { status: 503 },
-    );
+  try {
+    return await createService(request);
+  } catch {
+    console.error("Services POST failed unexpectedly");
+    return Response.json({ error: "Unable to create the service." }, { status: 500 });
   }
+}
 
+async function createService(request: Request) {
   let body: unknown;
   try {
     body = await request.json();
@@ -91,7 +79,7 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  const parsed = serviceInputSchema.safeParse(body);
+  const parsed = serviceSchema.safeParse(body);
   if (!parsed.success) {
     return Response.json(
       {
@@ -105,14 +93,24 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createRequestSupabaseClient(config);
+  const config = getSupabaseConfig();
+  if (!config) {
+    return Response.json(
+      { error: "Services are temporarily unavailable." },
+      { status: 503 },
+    );
+  }
+  const requestSupabase = await createRequestSupabaseClient(config);
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await requestSupabase.auth.getUser();
 
   if (authError) {
-    if (authError.status === 401 || authError.status === 403) {
+    if (
+      authError.name === "AuthSessionMissingError" ||
+      authError.status === 401 || authError.status === 403
+    ) {
       return Response.json({ error: "Authentication is required." }, { status: 401 });
     }
 
@@ -127,9 +125,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "Authentication is required." }, { status: 401 });
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await requestSupabase
     .from("profiles")
-    .select("id")
+    .select("role")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -148,13 +146,51 @@ export async function POST(request: Request) {
     );
   }
 
+  if (profile.role !== "provider") {
+    return Response.json(
+      { error: "Only provider accounts can create services." },
+      { status: 403 },
+    );
+  }
+
+  const { category_ids: categoryIds, ...serviceFields } = parsed.data;
+  // Never use the privileged client to authenticate the caller. It is created
+  // only after the cookie-backed identity and trusted profile role are checked.
+  const supabase = createSupabaseServerClient();
+  if (!supabase) {
+    return Response.json(
+      { error: "Services are temporarily unavailable." },
+      { status: 503 },
+    );
+  }
+
+  const normalizedCategoryIds = [...new Set(categoryIds.map((id) => id.toLowerCase()))];
+  if (normalizedCategoryIds.length > 0) {
+    const { data: categories, error: categoryError } = await supabase
+      .from("service_categories")
+      .select("id")
+      .in("id", normalizedCategoryIds)
+      .eq("active_status", true);
+    if (categoryError) {
+      console.error("Services POST category lookup failed", categoryError.code);
+      return Response.json({ error: "Unable to verify service categories." }, { status: 500 });
+    }
+    const activeIds = new Set((categories ?? []).map((category) => category.id));
+    if (normalizedCategoryIds.some((id) => !activeIds.has(id))) {
+      return Response.json({ error: "Every category must exist and be active." }, { status: 400 });
+    }
+  }
+
   const { data: service, error: insertError } = await supabase
     .from("services")
     .insert({
-      ...parsed.data,
+      ...serviceFields,
       provider_id: user.id,
+      status: "draft",
     })
-    .select("id, name, description, price_amount, currency, status, created_at")
+    .select(
+      "id, provider_id, title, hourly_rate, duration_minutes, coverage_radius_miles, status, created_at",
+    )
     .single();
 
   if (insertError) {
@@ -185,6 +221,40 @@ export async function POST(request: Request) {
       { error: "Unable to create the service." },
       { status: 500 },
     );
+  }
+  if (!service) {
+    return Response.json({ error: "Unable to create the service." }, { status: 500 });
+  }
+
+  if (normalizedCategoryIds.length > 0) {
+    const { error: mappingError } = await supabase
+      .from("service_category_mappings")
+      .insert(
+        normalizedCategoryIds.map((category_id) => ({
+          service_id: service.id,
+          category_id,
+        })),
+      );
+    if (mappingError) {
+      console.error("Service category assignment failed", mappingError.code);
+      const { error: cleanupError } = await supabase
+        .from("services")
+        .delete()
+        .eq("id", service.id)
+        .eq("provider_id", user.id)
+        .eq("status", "draft");
+      if (cleanupError) {
+        console.error("Service draft cleanup after mapping failure failed", cleanupError.code);
+      }
+      return Response.json(
+        {
+          error: cleanupError
+            ? "The draft was created, but categories could not be assigned or the draft removed."
+            : "Categories could not be assigned; the service draft was removed.",
+        },
+        { status: 500 },
+      );
+    }
   }
 
   return Response.json({ service }, { status: 201 });

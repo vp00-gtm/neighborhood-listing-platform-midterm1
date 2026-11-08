@@ -1,30 +1,46 @@
-import type { Service } from "@/types";
+"use client";
+
+import { useId } from "react";
+import type { Service, ServiceCategory } from "@/types";
+import BookingForm from "@/components/BookingForm";
 
 interface ServiceCardProps {
   service: Service;
 }
 
 export default function ServiceCard({ service }: ServiceCardProps) {
+  const titleId = useId();
   const categories = service.service_category_mappings
     .map((mapping) => mapping.category)
-    .filter((category) => category !== null);
+    .filter((category): category is ServiceCategory => category !== null && category.active_status);
 
   return (
-    <article className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-      <h3 className="text-xl font-semibold tracking-tight">{service.name}</h3>
-      <p className="mt-3 whitespace-pre-wrap break-words leading-7 text-zinc-600 dark:text-zinc-300">
-        {service.description}
+    <article aria-labelledby={titleId} className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm [overflow-wrap:anywhere] dark:border-zinc-800 dark:bg-zinc-900">
+      <h3 id={titleId} className="text-xl font-semibold tracking-tight">{service.title}</h3>
+      <p className="mt-3 whitespace-pre-wrap leading-7 text-zinc-600 dark:text-zinc-300">
+        {service.description?.trim() ? service.description : "No description provided."}
       </p>
-      <p className="mt-5 text-lg font-semibold">
-        {service.currency} {service.price_amount.toFixed(2)}
-      </p>
+      <dl className="mt-5 grid gap-3">
+        <div>
+          <dt className="text-sm text-zinc-600 dark:text-zinc-300">Hourly rate</dt>
+          <dd className="text-lg font-semibold">${service.hourly_rate.toFixed(2)} per hour (USD)</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-zinc-600 dark:text-zinc-300">Duration</dt>
+          <dd>{service.duration_minutes} minutes</dd>
+        </div>
+        <div>
+          <dt className="text-sm text-zinc-600 dark:text-zinc-300">Coverage radius</dt>
+          <dd>{service.coverage_radius_miles} {service.coverage_radius_miles === 1 ? "mile" : "miles"}</dd>
+        </div>
+      </dl>
       {categories.length > 0 && (
         <div className="mt-5">
           <h4 className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
             Categories
           </h4>
           <ul
-            aria-label={`Categories for ${service.name}`}
+            aria-label={`Categories for ${service.title}`}
             className="mt-2 flex flex-wrap gap-2"
           >
             {categories.map((category) => (
@@ -38,6 +54,7 @@ export default function ServiceCard({ service }: ServiceCardProps) {
           </ul>
         </div>
       )}
+      <BookingForm serviceId={service.id} serviceTitle={service.title} />
     </article>
   );
 }

@@ -17,10 +17,10 @@ const knownCategories = {
 class BlockedTest extends Error {}
 
 const missing = [];
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-if (!url) missing.push("NEXT_PUBLIC_SUPABASE_URL");
-if (!key) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+if (!url) missing.push("SUPABASE_URL");
+if (!key) missing.push("SUPABASE_PUBLISHABLE_KEY");
 for (const pair of Object.values(accounts)) {
   for (const variable of pair) {
     if (!process.env[variable]) missing.push(variable);

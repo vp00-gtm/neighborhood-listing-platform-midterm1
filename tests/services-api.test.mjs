@@ -271,26 +271,31 @@ test("POST scopes cleanup to the new owned draft when category assignment fails"
 test("privileged client requires server configuration and never persists a user session", async () => {
   const sdkUrl = "neighborhood-test:privileged-sdk";
   const markerUrl = "neighborhood-test:server-only";
+  const cookiesUrl = "neighborhood-test:config-cookies";
   const helperHooks = registerHooks({
     resolve(specifier, context, nextResolve) {
       if (specifier === "@supabase/supabase-js") return { url: sdkUrl, shortCircuit: true };
       if (specifier === "server-only") return { url: markerUrl, shortCircuit: true };
+      if (specifier === "@supabase/ssr") return { url: sdkUrl, shortCircuit: true };
+      if (specifier === "next/headers") return { url: cookiesUrl, shortCircuit: true };
       if (specifier === "@/lib/supabase-server") return { url: clientUrl, shortCircuit: true };
       return nextResolve(specifier, context);
     },
     load(url, context, nextLoad) {
       if (url === markerUrl) return { format: "module", shortCircuit: true, source: "export {};" };
+      if (url === cookiesUrl) return { format: "module", shortCircuit: true, source: "export async function cookies() { return { getAll() { return []; }, set() {} }; }" };
       if (url === sdkUrl) return {
         format: "module", shortCircuit: true,
-        source: "export const calls = []; export function createClient(...args) { calls.push(args); return { testClient: true }; }",
+        source: "export const calls = []; export function createClient(...args) { calls.push(args); return { testClient: true }; } export function createServerClient() { return {}; }",
       };
       return nextLoad(url, context);
     },
   });
-  let createSupabaseServerClient, calls;
+  let createSupabaseServerClient, getSupabaseConfig, calls;
   try {
     ({ createSupabaseServerClient } = await import("../src/lib/supabaseServer.ts"));
     ({ calls } = await import(sdkUrl));
+    ({ getSupabaseConfig } = await import("../src/lib/supabase-server.ts"));
   } finally {
     helperHooks.deregister();
   }
@@ -301,6 +306,7 @@ test("privileged client requires server configuration and never persists a user 
   try {
     process.env = {};
     assert.equal(createSupabaseServerClient(), null);
+    assert.equal(getSupabaseConfig(), null);
     process.env = { NEXT_PUBLIC_SUPABASE_URL: "https://unit-test.invalid" };
     assert.equal(createSupabaseServerClient(), null);
     process.env = { SUPABASE_SERVICE_ROLE_KEY: "unit-test-only-not-a-credential" };
@@ -314,6 +320,18 @@ test("privileged client requires server configuration and never persists a user 
     assert.deepEqual(calls, [["https://unit-test.invalid", "unit-test-only-not-a-credential", {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     }]]);
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "unit-test-publishable-input";
+    assert.deepEqual(getSupabaseConfig(), { url: "https://unit-test.invalid", anonKey: "unit-test-publishable-input" });
+    process.env = {
+      SUPABASE_URL: "https://server-only.invalid",
+      SUPABASE_PUBLISHABLE_KEY: "new-publishable-test-input",
+      SUPABASE_SERVICE_ROLE_KEY: "unit-test-only-not-a-credential",
+      NEXT_PUBLIC_SUPABASE_URL: "https://ignored-legacy.invalid",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "ignored-legacy-test-input",
+    };
+    assert.deepEqual(getSupabaseConfig(), { url: "https://server-only.invalid", anonKey: "new-publishable-test-input" });
+    assert.deepEqual(createSupabaseServerClient(), { testClient: true });
+    assert.equal(calls.at(-1)[0], "https://server-only.invalid");
   } finally {
     process.env = previousEnvironment;
   }

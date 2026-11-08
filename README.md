@@ -24,10 +24,34 @@ npm.cmd run dev
 Open the local address printed by Next.js (normally http://localhost:3000).
 In PowerShell, .cmd avoids the npm.ps1 execution-policy issue.
 
-The application requires NEXT_PUBLIC_SUPABASE_URL and
-NEXT_PUBLIC_SUPABASE_ANON_KEY. Public service GET also uses
-SUPABASE_SERVICE_ROLE_KEY strictly on the server. Configure actual values
-privately in the environment; do not commit them or paste them into logs.
+Use these exact, case-sensitive names in local and hosted environments:
+
+| Environment variable | Value type | Vercel type |
+| --- | --- | --- |
+| SUPABASE_URL | Supabase project URL; read only on the server | Secret |
+| SUPABASE_PUBLISHABLE_KEY | Publishable key or legacy anon key; read only on the server | Secret |
+| SUPABASE_SERVICE_ROLE_KEY | Secret key or legacy service-role key; server-only | Secret |
+
+The app's browser components use the server API, so these names deliberately
+have no NEXT_PUBLIC_ prefix. All three may be stored as Secret in Vercel without
+the public-prefix warning. The URL and publishable key are not inherently
+sensitive, so Config is also safe for those two values if preferred.
+
+For compatibility, NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+are still accepted as fallbacks when the corresponding new names are absent.
+The new names take precedence. Use the new names in Vercel and remove obsolete
+public aliases there if the goal is to avoid public-prefix warnings.
+Never place a secret/service-role key in any NEXT_PUBLIC_ variable.
+The mixed-case name SupaBase_service_role_key does not match the code.
+Use NAME=value without surrounding spaces, and use the same names on Vercel.
+Set the values privately, restart local development after changes, and redeploy
+the hosted application after updating its environment. Configure Preview and
+Production separately as needed. Test-account passwords are for local audit
+commands only and must not be uploaded as application deployment variables.
+
+Do not commit environment files or paste credentials into chat or logs. If a
+secret key or account password is exposed, rotate/change it privately and update
+the affected local/hosted values; renaming a variable does not invalidate a key.
 Protected provider/admin routes require real authenticated Supabase cookies.
 No sign-in UI or mock login is provided.
 

@@ -78,25 +78,60 @@ The category check established that one category was visible and active.
 It did **not** independently establish the existence of an inactive category,
 so a separate known-inactive-category negative control remains unverified.
 
-## Required write tests — not run on production
+## Isolated SQL write, migration and deletion audit
 
-The student's explicit production read-only restriction was preserved.
+Date: 2026-11-07. **40 checks passed; 0 failed.** Reproduce with:
 
-| Exam scenario | Expected result | Actual verification status |
-| --- | --- | --- |
-| Provider creates a draft linked to their authenticated ID | Allowed | Local mocked API tests pass; live insert not attempted |
-| Provider A updates their own draft | Allowed | Not attempted in production |
-| Provider A updates/deletes Provider B's service | Denied | Not attempted in production |
-| Provider modifies/deletes their own approved service | Denied | Not attempted in production |
-| Provider/client approves a service | Denied | Not attempted in production |
-| Anonymous and authenticated clients insert bookings | Allowed for approved service | Student previously reported a persisted browser booking; authenticated test-role insertion not independently verified |
-| Booking references a non-approved service | Denied by the application policy | Not attempted in production |
-| Admin performs permitted writes/elevated operations | Allowed | Not attempted; read-only admin results do not prove this |
-| Foreign-key deletion actions | Match Version B | Alignment migration execution reported by student; destructive tests not attempted |
+```powershell
+node scripts/rls-isolated-tests.mjs
+```
 
-These cases require a disposable environment or separately authorized disposable
-records and a reviewed cleanup plan. Do not mark them passed based on local
-mocks, policy row counts, a service-role request, or SQL Editor owner access.
+[Machine-readable results](evidence/midterm/rls-isolated.json) include migration
+execution, data preservation, positive/negative authorization and cleanup.
+
+The runner uses the cached Supabase PostgreSQL 17 image in a new Docker
+container with no network, published ports, host mounts or production
+configuration. Synthetic legacy fixtures are upgraded through all four current
+migration files. Every write test rolls back; the final snapshot confirms that
+legacy IDs, prices, currency, descriptions, notes, references and timestamps
+remain unchanged. The container is removed after the run.
+
+These are real PostgreSQL RLS/constraint tests. SQL roles and the request JWT
+subject setting simulate Supabase's database authorization context; they do not
+test Supabase Auth's HTTP token verification or production HTTP write paths.
+The fixture bootstrap models standard anon/authenticated/service-role grants
+locally; elevated local success does not independently prove production grants.
+
+| Required scenario | Actual isolated outcome |
+| --- | --- |
+| Anonymous approved-service reads / draft denial | PASS |
+| Known active category visible / known inactive category hidden | PASS |
+| Public approved-service mappings / private mapping isolation | PASS |
+| Provider-owned draft creation using allowed columns and default status | PASS |
+| Provider edits own draft/suspended service | PASS |
+| Provider cannot forge ownership or update/delete another provider's service | PASS |
+| Provider cannot edit/delete own approved service | PASS |
+| Provider submits draft but cannot approve it | PASS |
+| Client cannot approve services or self-assign admin role | PASS |
+| Admin approves pending and suspends approved services | PASS |
+| Anonymous and client booking inserts without booking SELECT rights | PASS |
+| Booking insertion for non-approved service denied | PASS |
+| Anonymous/client booking-read isolation | PASS |
+| Owning provider and administrator booking reads | PASS |
+| Administrator elevated writes across all five application tables | PASS in isolated service-role context |
+| Provider deletion RESTRICT; category/mapping and service/booking CASCADE | PASS |
+| All migration files execute; legacy data survives; container removed | PASS |
+
+No application writes were made in production. Real provider-session HTTP
+creation and production write grants remain unverified under the student's
+production read-only restriction. The student previously reported a successful
+browser booking persisted in production, but that report is not substituted
+for a controlled authenticated-role write audit.
+
+The earlier production inactive-category check established one visible active
+category without an independent hidden-row control. That production limitation
+remains; the isolated audit now supplies the required known-inactive negative
+control on synthetic data.
 
 ## Current application authorization design
 

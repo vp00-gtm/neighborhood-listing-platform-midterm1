@@ -83,7 +83,8 @@ function setup(options = {}) {
         assert.deepEqual(query.filters, [["eq", "id", userId]]);
         return { data: options.noProfile ? null : { role: options.role ?? "provider" }, error: null };
       }
-      assert.equal(privileged, true);
+      assert.equal(privileged, table === "services" && query.operation === "select",
+        "Only public GET may use the privileged client; all POST operations must use the provider session");
       if (table === "services") {
         if (query.operation === "select") return { data: options.services ?? [], error: null };
         if (query.operation === "insert") return { data: options.noPersistedRecord ? null : persisted, error: null };
@@ -184,7 +185,7 @@ test("POST returns structured 400s and never authenticates or writes invalid inp
   assert.equal(state.events.length, 0);
 });
 
-test("POST requires a verified cookie user and provider role before privileged access", async () => {
+test("POST requires a verified cookie user and provider role before database writes", async () => {
   for (const [options, status] of [
     [{ noConfig: true }, 503], [{ anonymous: true }, 401],
     [{ authError: { status: 400, name: "AuthSessionMissingError" } }, 401],
@@ -207,16 +208,18 @@ test("POST persists a draft owned by the verified user and returns the saved rec
   const response = await post({ ...input, title: "  House Cleaning  " });
   assert.equal(response.status, 201);
   assert.deepEqual(await response.json(), { service: persisted });
-  assert.deepEqual(state.events, ["authenticate", "profiles.select", "privileged-client", "services.insert"]);
+  assert.deepEqual(state.events, ["authenticate", "profiles.select", "services.insert"]);
   const insert = state.calls.find((call) => call.operation === "insert");
-  assert.deepEqual(insert.value, { ...input, provider_id: userId, status: "draft" });
+  assert.deepEqual(insert.value, { ...input, provider_id: userId });
+  assert.equal(Object.hasOwn(insert.value, "status"), false,
+    "Use the trusted draft default; providers have no INSERT grant on status");
   assert.equal(insert.columns, "id, provider_id, title, hourly_rate, duration_minutes, coverage_radius_miles, status, created_at");
 });
 
 test("POST preserves optional category assignments after checking active category IDs", async () => {
   const state = setup();
   assert.equal((await post({ ...input, category_ids: [categoryId] })).status, 201);
-  assert.deepEqual(state.events, ["authenticate", "profiles.select", "privileged-client", "service_categories.select", "services.insert", "service_category_mappings.insert"]);
+  assert.deepEqual(state.events, ["authenticate", "profiles.select", "service_categories.select", "services.insert", "service_category_mappings.insert"]);
   const mapping = state.calls.find((call) => call.table === "service_category_mappings");
   assert.deepEqual(mapping.value, [{ service_id: serviceId, category_id: categoryId }]);
 });
@@ -233,7 +236,7 @@ test("POST rejects inactive/missing categories and category lookup errors before
 
 test("POST sanitizes insert errors and refuses a success without a persisted record", async () => {
   for (const [options, status] of [
-    [{ missingKey: true }, 503], [{ clientThrows: true }, 500], [{ noPersistedRecord: true }, 500],
+    [{ noPersistedRecord: true }, 500],
     ...[["42501", 403], ["23503", 409], ["23505", 409], ["23514", 400], ["XX000", 500], ["throw", 500]]
       .map(([code, status]) => [{ failures: { "services.insert": code } }, status]),
   ]) {
@@ -242,6 +245,13 @@ test("POST sanitizes insert errors and refuses a success without a persisted rec
     assert.equal(response.status, status);
     assert.doesNotMatch(await response.text(), /sensitive|42501|23503|23505|23514|XX000/);
   }
+});
+
+test("POST never creates a service-role client, including when its configuration is unavailable", async () => {
+  const state = setup({ missingKey: true, clientThrows: true });
+  assert.equal((await post({ ...input, category_ids: [categoryId] })).status, 201);
+  assert.equal(state.events.includes("privileged-client"), false);
+  assert.ok(state.calls.every((call) => call.privileged === false));
 });
 
 test("POST scopes cleanup to the new owned draft when category assignment fails", async () => {

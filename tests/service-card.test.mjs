@@ -42,12 +42,13 @@ test("service card presents public service details with semantic labels", () => 
   const titleId = html.match(/<article[^>]*aria-labelledby="([^"]+)"/)?.[1];
   assert.ok(titleId);
   assert.ok(html.includes(`<h3 id="${titleId}"`));
+  assert.match(html, /<header><h3/);
   assert.match(html, />Fixture service<\/h3>/);
   assert.ok(html.includes(fixture.description));
-  assert.match(html, /<dl[^>]*>/);
-  assert.match(html, /<dt[^>]*>Hourly rate<\/dt><dd[^>]*>\$35\.00 per hour \(USD\)<\/dd>/);
-  assert.match(html, /<dt[^>]*>Duration<\/dt><dd>120 minutes<\/dd>/);
-  assert.match(html, /<dt[^>]*>Coverage radius<\/dt><dd>15 miles<\/dd>/);
+  assert.match(html, /<ul aria-label="Service specifications for Fixture service"/);
+  assert.match(html, /<li><span[^>]*>Hourly rate:<\/span> \$35\.00 per hour \(USD\)<\/li>/);
+  assert.match(html, /<li><span[^>]*>Duration:<\/span> 120 minutes<\/li>/);
+  assert.match(html, /<li><span[^>]*>Coverage radius:<\/span> 15 miles<\/li>/);
   assert.match(html, /aria-label="Categories for Fixture service"/);
   assert.ok(html.includes(category.name));
 });
@@ -57,7 +58,7 @@ test("service card supports free services, missing descriptions and absent categ
     service_category_mappings: [{ category: null }, { category: { ...category, name: "Inactive category", active_status: false } }] });
   assert.match(html, /\$0\.00 per hour \(USD\)/);
   assert.match(html, /No description provided/);
-  assert.match(html, /<dd>1 mile<\/dd>/);
+  assert.match(html, /1 mile<\/li>/);
   assert.doesNotMatch(html, /Inactive category|Categories for/);
 });
 
@@ -72,7 +73,10 @@ test("cards have distinct heading associations even with repeated service titles
 
 test("booking controls identify their service and use native labeled controls", () => {
   const html = render();
-  assert.match(html, /<details[^>]*><summary[^>]*>Request Fixture service<\/summary>/);
+  assert.match(html, /<button type="button" aria-label="Book appointment for Fixture service" aria-expanded="false"/);
+  const panelId = html.match(/aria-controls="([^"]+)"/)?.[1];
+  assert.ok(panelId);
+  assert.ok(html.includes(`<div id="${panelId}" hidden="">`));
   assert.match(html, /<form aria-label="Booking request for Fixture service"/);
   assert.match(html, /<label[^>]*>Email<input[^>]*type="email"/);
   assert.match(html, /<label[^>]*>Requested date<input[^>]*type="date"/);

@@ -1,79 +1,137 @@
-# Local Services & Bookings — Security Status
+# Local Services & Bookings — Security Audit
 
-## Scope and status
+## Latest production read-only audit
 
-This document records the intended local SQL/API security design. The
-migration and application code are not proof that the live Supabase project has
-been updated. Do not describe remote schema, grants, or policies as deployed
-until separately inspected and approved.
+Date: 2026-11-07 (America/Los_Angeles). The student authorized production
+read-only checks using the existing environment configuration.
+**20 checks passed; 0 failed; 0 blocked.** This is evidence of read access and
+isolation, not proof of write authorization.
 
-The local RLS integration runner is `scripts/rls-tests.mjs`. It requires
-dedicated test accounts and project configuration and was not run during local
-implementation. Its table checks are read-only, but it signs in to the
-configured accounts; use dedicated test accounts and a non-production project.
+Run with:
 
-## Authorization model
+```powershell
+npm.cmd run test:rls:readonly
+```
 
-- Only `profiles.role` values `admin`, `merchant`, `provider`, and `client`
-  are valid. The SQL migration assigns existing roles from the student's
-  approved mapping. Ordinary users receive no profile write privilege and
-  cannot set their own role.
-- `current_profile_has_role(text)` is a fixed-search-path, security-definer
-  helper that checks only the current authenticated profile. Execute is
-  granted to authenticated users, not anonymous users.
-- The application uses a request-scoped anon client. It contains no
-  service-role key and does not rely on service-role RLS bypass.
-- Providers do not receive the public approved-service SELECT policy;
-  authenticated non-provider users and anonymous visitors can browse approved
-  services.
-- Explicit table grants are paired with RLS. Existing policies on the five
-  subsystem tables are replaced because permissive policies combine with OR.
+Node loads `.env.local` privately. No environment-file contents, passwords,
+tokens, account email addresses, booking contact information or booking notes
+were printed. No application records were modified. Authentication password
+sign-in and sign-out requests were used to establish/end in-memory test
+sessions; these operations can update Supabase Auth session/sign-in metadata.
 
-## Services and categories
+The runner uses the configured anon/publishable key for every role.
+It does not use `SUPABASE_SERVICE_ROLE_KEY`. Its fetch guard permits only GET
+requests to the five application tables and the specific authentication
+sign-in/sign-out endpoints. Table INSERT/UPDATE/DELETE, RPCs, other hosts and
+redirects are blocked independently of mutation environment flags.
 
-- Anonymous users can select approved services, active categories, and
-  mappings whose service is approved.
-- Providers can select and manage their own services. Insert is draft-only;
-  ordinary edits/deletes are limited to draft or suspended services.
-- A separate provider update policy permits only the draft-to-pending review
-  submission transition. It does not permit provider approval.
-- Admin review permits pending-to-approved/suspended transitions;
-  administrators can read and update services for review.
-- Categories have public select only when `active_status` is true.
+## Account verification
 
-## Bookings
+The configured providerA/providerB accounts verified as `provider`, and
+clientA/clientB verified as `client`. The student identified the account
+configured as `UNRELATED_EMAIL` / `UNRELATED_PASSWORD` as the administrator;
+its authenticated profile verified as `admin`. This label is a credential
+alias, not an authorization bypass. No profile role was assigned or changed.
 
-- Anonymous and authenticated users can insert only the official booking
-  fields, and only for an approved service. The nullable legacy `client_id`,
-  timestamp, and notes columns are not accepted from the request.
-- The insert policy checks approval through a security-definer helper in the
-  non-public `private` schema so an authenticated provider does not need
-  broader service SELECT access to submit a booking.
-- No anonymous booking SELECT grant or policy exists.
-- Authenticated booking SELECT is limited by RLS to admins and providers who
-  own the associated service. Client role alone grants no read access.
-- Booking UPDATE and DELETE are not granted.
-- The booking API returns a generic success message rather than the stored
-  row.
+The first attempt could not find `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+An interim provider-controlled audit passed 19 checks with 4 admin checks
+blocked. After supporting the student's existing unrelated-account alias and
+verifying its real profile role, the final run below passed all 20 checks.
+No credentials had to be edited by the agent.
 
-## Migration review risks
+## Observed results
 
-- The required migration's filename predates the two active baseline versions.
-  The local baselines are now no-op placeholders, but remote migration history
-  remains unknown. Review the remote ledger before any execution.
-- The schema migration uses approved fixture IDs and maps. It intentionally
-  raises an exception if nonempty data differs from the reviewed rows.
-- Existing legacy columns are preserved. Required foreign-key delete actions
-  are updated to the exam's required behavior; cascades may affect future
-  deletes, so test these actions on disposable data.
-- The requested UTC default expression is used exactly as supplied. Verify
-  timestamp behavior in the target PostgreSQL environment before a live run.
+Controls returned through the authenticated admin session: 4 services,
+4 category mappings and 3 bookings. The audit accepts existing records rather
+than requiring exactly two original bookings. Booking reads requested only IDs
+and service references. Known public and private controls establish that denied
+reads were not merely queries against an empty database.
 
-## Required isolated verification
+| Check | Actual result | Evidence |
+| --- | --- | --- |
+| providerA: authentication and profile role | PASS | Expected visibility verified. |
+| clientA: authentication and profile role | PASS | Expected visibility verified. |
+| providerB: authentication and profile role | PASS | Expected visibility verified. |
+| admin: authentication and profile role | PASS | Expected visibility verified. |
+| clientB: authentication and profile role | PASS | Expected visibility verified. |
+| Admin: read service controls | PASS | 4 services visible to the authenticated admin. |
+| Anonymous: approved services visible, private services hidden | PASS | 2 approved services visible; 2 verified non-approved controls hidden. |
+| Anonymous: active categories visible | PASS | 1 visible categories; all active. Existence of hidden inactive categories was not independently established. |
+| Admin: read mapping controls | PASS | 4 mappings visible to the authenticated admin. |
+| Anonymous: only approved-service mappings visible | PASS | Public/private mapping visibility verified against the established service controls. |
+| providerA: only owned services visible | PASS | Expected visibility verified. |
+| providerA: owned mappings include approved services | PASS | Expected visibility verified. |
+| providerB: only owned services visible | PASS | Expected visibility verified. |
+| providerB: owned mappings include approved services | PASS | Expected visibility verified. |
+| Admin: read existing booking controls | PASS | 3 existing bookings visible; contact information and notes were not requested. |
+| anonymous: no booking read access | PASS | Permission denied, as required. |
+| clientA: no booking read access | PASS | Existing booking controls are hidden by RLS. |
+| clientB: no booking read access | PASS | Existing booking controls are hidden by RLS. |
+| providerA: only bookings for owned services visible | PASS | Expected visibility verified. |
+| providerB: only bookings for owned services visible | PASS | Expected visibility verified. |
 
-Before any live execution, test the migration and RLS behavior in a disposable
-database: public reads, provider ownership and draft submission, provider
-denial of approval, admin review, guest/authenticated booking insertion,
-client booking-read denial, provider/admin booking reads, FK delete actions,
-and grant boundaries. Record actual test outcomes separately from expected
-behavior.
+A PASS on an expected-denial check means access was denied or existing rows
+were hidden, as required. The anonymous booking query returned permission
+denied; both clients received no booking rows.
+
+The category check established that one category was visible and active.
+It did **not** independently establish the existence of an inactive category,
+so a separate known-inactive-category negative control remains unverified.
+
+## Required write tests — not run on production
+
+The student's explicit production read-only restriction was preserved.
+
+| Exam scenario | Expected result | Actual verification status |
+| --- | --- | --- |
+| Provider creates a draft linked to their authenticated ID | Allowed | Local mocked API tests pass; live insert not attempted |
+| Provider A updates their own draft | Allowed | Not attempted in production |
+| Provider A updates/deletes Provider B's service | Denied | Not attempted in production |
+| Provider modifies/deletes their own approved service | Denied | Not attempted in production |
+| Provider/client approves a service | Denied | Not attempted in production |
+| Anonymous and authenticated clients insert bookings | Allowed for approved service | Student previously reported a persisted browser booking; authenticated test-role insertion not independently verified |
+| Booking references a non-approved service | Denied by the application policy | Not attempted in production |
+| Admin performs permitted writes/elevated operations | Allowed | Not attempted; read-only admin results do not prove this |
+| Foreign-key deletion actions | Match Version B | Alignment migration execution reported by student; destructive tests not attempted |
+
+These cases require a disposable environment or separately authorized disposable
+records and a reviewed cleanup plan. Do not mark them passed based on local
+mocks, policy row counts, a service-role request, or SQL Editor owner access.
+
+## Current application authorization design
+
+- `src/lib/supabaseServer.ts` is server-only. Public GET services uses its
+  privileged client with an explicit approved filter and public column list.
+  Active categories are filtered explicitly in that response.
+- POST services validates strict input, verifies a cookie-authenticated user
+  and trusted provider profile, and uses that user's session for service/category
+  inserts and cleanup. Ownership comes from the verified user. The database's
+  draft default is used because providers have no INSERT grant on status.
+- PATCH/DELETE/submission/review and booking routes use request-scoped
+  session clients, with role/ownership checks and database RLS.
+- Direct anonymous RLS reads are independent of the application's privileged
+  GET, so the public API cannot make a failing anonymous RLS test appear to pass.
+- Clients and anonymous visitors have no booking read access. Providers see
+  bookings for their own services; admins can read the booking controls.
+- Providers read their own category mappings at every status, including
+  approved. Mapping writes remain restricted to owned draft/suspended services.
+- Profile roles cannot be assigned through ordinary application profile writes.
+  The role enum remains admin/merchant/provider/client.
+
+## Migration and script status
+
+The student reports that the original migration and baseline placeholders were
+applied, then ran `20261107000000_exam_schema_alignment.sql` successfully in
+SQL Editor. This audit did not execute SQL, inspect constraints or reconcile the
+CLI migration ledger; manual SQL execution alone is not evidence that the CLI
+version was recorded. Do not rerun the old migration.
+
+The older `scripts/rls-tests.mjs` includes mutation cases, fixed fixture-count
+assumptions and outdated transition/cleanup assumptions. It was **not run**.
+Use the separate read-only runner for the production checks documented here.
+
+Local verification for the new runner covers allowed read/auth operations,
+blocked table writes/RPCs/other origins, sanitized network errors, refusal of
+elevated keys, dynamic booking counts, provider-derived controls, and verification
+of the unrelated-account admin alias. Live read results above do not establish
+a complete Part 4 write audit.

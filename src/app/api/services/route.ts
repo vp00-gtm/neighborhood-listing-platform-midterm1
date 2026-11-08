@@ -154,15 +154,9 @@ async function createService(request: Request) {
   }
 
   const { category_ids: categoryIds, ...serviceFields } = parsed.data;
-  // Never use the privileged client to authenticate the caller. It is created
-  // only after the cookie-backed identity and trusted profile role are checked.
-  const supabase = createSupabaseServerClient();
-  if (!supabase) {
-    return Response.json(
-      { error: "Services are temporarily unavailable." },
-      { status: 503 },
-    );
-  }
+  // Keep every creation/category/cleanup operation in the verified provider's
+  // session so the database's ownership and draft-only RLS checks also apply.
+  const supabase = requestSupabase;
 
   const normalizedCategoryIds = [...new Set(categoryIds.map((id) => id.toLowerCase()))];
   if (normalizedCategoryIds.length > 0) {
@@ -186,7 +180,8 @@ async function createService(request: Request) {
     .insert({
       ...serviceFields,
       provider_id: user.id,
-      status: "draft",
+      // The migration defaults to draft and intentionally grants providers no
+      // INSERT privilege on status. The strict schema rejects browser status.
     })
     .select(
       "id, provider_id, title, hourly_rate, duration_minutes, coverage_radius_miles, status, created_at",

@@ -211,3 +211,61 @@ database execution has not been confirmed.
 **Limitations:** The new migration has not been applied to the live database. The remaining security scenarios have not been completed. No database write tests were executed during the reported test run.
 
 **Commit status:** No commit or push was made for Part 4 at the time of this entry.
+
+## CIS 3610 Midterm Version B — Parts 5 and 6 rubric alignment, 2026-11-07
+
+This entry records the current correction session. Earlier entries remain
+historical records and are not evidence that the current database was tested.
+
+**Exact request:** "i already gave the professor acess to the repository, can you help me complete steps 5 and 6"
+
+**Scope clarification:** The student selected "Exam Parts 5 and 6: API and accessible UI".
+Instructor repository access is confirmed by the student, not independently verified here.
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Part 5 / Codex | Align the services API with the supplied Version B rubric, using the existing authenticated provider session. | POST uses the cookie-authenticated client for service/category creation and cleanup, verifies the provider role, derives ownership server-side, and keeps strict validation and structured errors. It relies on the migration's draft default because providers have no INSERT grant on status. GET retains its server-only, approved-service public projection. | Rejected the previous service-role write path: it bypassed provider RLS. Removed explicit status insertion because the column-level grant does not permit it. | Mocked API tests verify the session client, ownership, allowed insert columns, rejection paths, persisted response and no service-role construction in POST. No live API writes or RLS tests were performed. | Pending — no commit created in this session. |
+| Part 6 / Codex | Match the required semantic card, 1/2/3-column breakpoints, named booking button and keyboard focus behavior. | Added article header and specifications ul; configured grid-cols-1 md:grid-cols-2 lg:grid-cols-3; added a native booking disclosure button with an accessible name, aria-expanded and aria-controls; added focus rings on service controls. Date-input focus-within styling covers native internal segments. | Replaced the earlier specifications dl and summary entry control to match the exact rubric. Replaced the sm tablet breakpoint with md. Browser testing exposed a missing ring on one date segment; this was corrected and retested. | React rendering tests and mocked explorer tests; headless Edge with intercepted synthetic API responses verified layouts at 320/640/768/1280px, no horizontal overflow, Tab/Shift+Tab/Enter/Space, disclosure state, and visible rings through all booking fields and the submit button. No forms were submitted. | Pending — no commit created in this session. |
+
+**Local results:** 50 tests passed; lint, TypeScript, production build and
+whitespace checks passed. The build loads environment configuration normally;
+no environment-file contents or credentials were inspected or displayed.
+
+**Evidence limits:** Browser services were synthetic test fixtures, not live
+Supabase records. These checks do not prove live provider-session persistence,
+database RLS behavior, cross-browser accessibility or screen-reader behavior.
+No database connection, SQL, migration, deployment, commit or push was performed.
+
+## CIS 3610 Midterm Version B — forward schema alignment, 2026-11-07
+
+**Exact request:** "we dont need a professors approval, we just want the assignment to work. make the recomended changes."
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Part 3 alignment / Codex | Prepare the recommended schema corrections to match the full rubric while preserving the already-applied migration and records. | Added 20261107000000_exam_schema_alignment.sql, following all three existing migration versions. It changes service-provider deletion to RESTRICT, category-mapping deletion to CASCADE, booking-service deletion to CASCADE, installs the exam slug check, and sets the five exact created_at default expressions. Added an execution/effects note in docs/exam-schema-alignment.md. | Rejected editing or rerunning the applied migration and any data-repair backfills. Unexpected FK metadata or incompatible slugs abort the new transaction instead of guessing or altering records. | 18 offline source-level checks passed. Migration ordering and whitespace were checked. A SHA-256 comparison confirmed the original migration was unchanged. No SQL parser or PostgreSQL execution was used, and no Supabase connection or remote change occurred. | Pending — no commit created in this session. |
+
+**Status:** The new migration is prepared locally and has not been applied.
+It contains no row updates/deletions, but future service deletions will cascade
+to bookings and future category deletions will cascade to mappings, per the
+rubric. Disposable-database verification and review of remote prerequisites
+remain necessary before production execution. No credentials or environment-file
+contents were accessed or displayed.
+
+## CIS 3610 Midterm Version B — production read-only RLS audit, 2026-11-07
+
+**Exact request:** "can you help me with number three, i have the .env with the account details"
+
+**Scope selected by the student:** "Production project — keep checks read-only".
+The student then identified the existing "unrelated" account as the admin.
+
+| Step / Tool | Prompt Summary | Model Output Used | Model Output Rejected & Rationale | Verification Method | Associated Git Commit |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Part 4 read audit / Codex | Verify production visibility and role isolation without modifying application records or displaying credentials. | Added scripts/rls-readonly-tests.mjs and test:rls:readonly, with an independent transport allowlist for table GETs and authentication only. Uses existing records without a two-booking assumption. Supports the student-identified UNRELATED credential alias only after verifying its real admin profile role. Updated docs/security-audit.md with actual results and untested write cases. | Did not run the older mutation-capable script or use the service-role key to bypass RLS. Did not assume the unrelated account was admin, invent results, require credential values in chat, or change environment files. | Five local runner safety tests pass. Initial missing admin configuration caused blocked checks; final production run verified all five account roles and passed all 20 read-only checks. Four services, four mappings and three bookings were available as admin controls. No booking emails or notes were requested. | Pending — no commit created in this session. |
+
+**Evidence limits:** Authentication sign-in/sign-out requests can create/end Auth
+sessions and update sign-in metadata. No service, category, mapping, profile or
+booking records were inserted, updated or deleted. No SQL, RPC, migration,
+permission change, commit, push or deployment was performed. Write authorization,
+admin elevated writes and a known-inactive-category negative control remain
+unverified. Environment variables were loaded privately by Node; no credential
+values or file contents were displayed.

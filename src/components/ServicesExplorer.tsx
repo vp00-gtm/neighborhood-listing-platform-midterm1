@@ -158,7 +158,7 @@ export default function ServicesExplorer() {
           setError(null);
           setRetryCount((count) => count + 1);
         }}
-        className="mt-5 min-h-11 rounded-lg border border-emerald-700 px-4 py-2 font-semibold text-emerald-800 aria-disabled:cursor-wait aria-disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-700 dark:border-emerald-400 dark:text-emerald-300 dark:focus-visible:outline-emerald-300"
+        className="mt-5 min-h-11 rounded-lg border border-emerald-700 px-4 py-2 font-semibold text-emerald-800 aria-disabled:cursor-wait aria-disabled:opacity-60 focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2 dark:border-emerald-400 dark:text-emerald-300 dark:focus-visible:ring-emerald-300 dark:focus-visible:ring-offset-zinc-950"
       >
         {isLoading ? "Loading services…" : error ? "Try again" : "Refresh services"}
       </button>
@@ -181,7 +181,7 @@ export default function ServicesExplorer() {
             <p>{error}</p>
           </div>
         ) : !isLoading && services.length > 0 && !error ? (
-          <ul aria-label="Approved neighborhood services" className="mt-6 grid min-w-0 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <ul aria-label="Approved neighborhood services" className="mt-6 grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => (
               <li key={service.id} className="min-w-0">
                 <ServiceCard service={service} />

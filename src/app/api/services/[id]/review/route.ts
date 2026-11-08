@@ -75,7 +75,7 @@ export async function PATCH(
     .from("services")
     .update({ status: parsed.data.status })
     .eq("id", id)
-    .eq("status", "pending")
+    .in("status", parsed.data.status === "approved" ? ["pending"] : ["pending", "approved"])
     .select("id, status")
     .maybeSingle();
 
@@ -89,7 +89,7 @@ export async function PATCH(
         error:
           parsed.data.status === "approved"
             ? "Only pending services can be approved."
-            : "Only pending services can be suspended.",
+            : "Only pending or approved services can be suspended.",
       },
       { status: 409 },
     );
